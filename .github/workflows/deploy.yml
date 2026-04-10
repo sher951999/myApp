@@ -1,0 +1,44 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key:b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZWQyNTUxOQAAACAl8I3dbYoujWipQSnKXbzor1MHhZ8lpFQtJXng3OWUgAAAJjIc8YoyHPGKAAAAAtzc2gtZWQyNTUxOQAAACAl8I3dbYoujWipQSnKXbzor1MHhZ8lpFQtJXng3OWUgAAAEBQurV8HYGqQ7zLYkq994JGtbYispRjUoDKFq9A50j99CXz8jd1tii6NaKlBKcpdvOivUweFnyWkVC0leeDc5ZSAAAADmdpdGh1Yi1hY3Rpb25zAQIDBAUGBw==
+
+      - name: Add VPS to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ 170.205.31.47 }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ 170.205.31.47 }} << EOF
+            cd ${{ secrets./var/githubAction/myApp }}
+            git pull origin main
+            npm ci
+            pm2 restart my-app || pm2 start index.js --name my-app
+          EOF
